@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+// Set default JWT configuration
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'expense_tracker_jwt_secret_key';
+process.env.JWT_EXPIRE = process.env.JWT_EXPIRE || '30d';
+
 const connectDB = async () => {
   try {
     // Use a direct connection string if environment variable is not available
