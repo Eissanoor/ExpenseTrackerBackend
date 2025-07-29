@@ -24,12 +24,11 @@ exports.registerUser = async (req, res) => {
       password,
     });
 
-    // Generate token
-    const token = user.getSignedJwtToken();
+    
 
     res.status(201).json({
       success: true,
-      token,
+  
       user: {
         id: user._id,
         username: user.username,
