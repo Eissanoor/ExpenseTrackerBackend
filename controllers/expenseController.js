@@ -30,7 +30,7 @@ exports.getExpenses = async (req, res) => {
     // Copy req.query
     const reqQuery = { ...req.query };
     // Fields to exclude
-    const removeFields = ['select', 'sort', 'page', 'limit', 'startDate', 'endDate'];
+    const removeFields = ['select', 'sort', 'page', 'limit', 'startDate', 'endDate', 'week', 'month', 'year', 'amountEquals', 'amountGreaterThan', 'amountLessThan'];
     // Loop over removeFields and delete them from reqQuery
     removeFields.forEach(param => delete reqQuery[param]);
 
@@ -47,6 +47,55 @@ exports.getExpenses = async (req, res) => {
       queryObj.date = { $gte: new Date(req.query.startDate) };
     } else if (req.query.endDate) {
       queryObj.date = { $lte: new Date(req.query.endDate) };
+    } else if (req.query.week && req.query.year) {
+      // Week filtering (week number and year)
+      const year = parseInt(req.query.year);
+      const week = parseInt(req.query.week);
+      
+      // Calculate the start date of the specified week
+      const startDate = new Date(year, 0, 1 + (week - 1) * 7);
+      // Adjust to the nearest Sunday if not already
+      const dayOfWeek = startDate.getDay();
+      startDate.setDate(startDate.getDate() - dayOfWeek);
+      
+      // Calculate the end date (start date + 6 days)
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      
+      queryObj.date = { $gte: startDate, $lte: endDate };
+    } else if (req.query.month && req.query.year) {
+      // Month filtering (month number and year)
+      const year = parseInt(req.query.year);
+      const month = parseInt(req.query.month) - 1; // JavaScript months are 0-indexed
+      
+      // First day of the specified month
+      const startDate = new Date(year, month, 1);
+      
+      // First day of the next month
+      const endDate = new Date(year, month + 1, 0);
+      
+      queryObj.date = { $gte: startDate, $lte: endDate };
+    }
+
+    // Amount filtering
+    if (req.query.amountEquals) {
+      queryObj.amount = parseFloat(req.query.amountEquals);
+    } else {
+      // Create amount filter object if needed
+      const amountFilter = {};
+      
+      if (req.query.amountGreaterThan) {
+        amountFilter.$gte = parseFloat(req.query.amountGreaterThan);
+      }
+      
+      if (req.query.amountLessThan) {
+        amountFilter.$lte = parseFloat(req.query.amountLessThan);
+      }
+      
+      // Add amount filter to query object if any amount filters were specified
+      if (Object.keys(amountFilter).length > 0) {
+        queryObj.amount = amountFilter;
+      }
     }
 
     // Finding resource
