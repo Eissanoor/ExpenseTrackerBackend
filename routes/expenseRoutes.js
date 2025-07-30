@@ -8,6 +8,7 @@ const {
   getExpenseSummary,
   getWeeklyExpenses,
   getMonthlyExpenses,
+  getTotalAmount,
 } = require('../controllers/expenseController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -20,6 +21,7 @@ router.use(protect);
 router.get('/summary', getExpenseSummary);
 router.get('/weekly', getWeeklyExpenses);
 router.get('/monthly', getMonthlyExpenses);
+router.get('/total', getTotalAmount);
 
 // CRUD routes
 router.route('/')

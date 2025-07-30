@@ -1,19 +1,17 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+mongoose.Promise = global.Promise;
 
-// Set default JWT configuration
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'expense_tracker_jwt_secret_key';
-process.env.JWT_EXPIRE = process.env.JWT_EXPIRE || '30d';
+// Get MongoDB URL and remove any surrounding quotes if present
+let MONGODB_URL = process.env.MONGODB_URL;
 
-const connectDB = async () => {
-  try {
-    // Use a direct connection string if environment variable is not available
-    const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/expense-tracker';
-    const conn = await mongoose.connect(mongoURI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
-    process.exit(1);
-  }
-};
 
-module.exports = connectDB; 
+
+mongoose
+  .connect(MONGODB_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log("Database Connected Successfully");
+  })
+  .catch((e) => console.log(e));

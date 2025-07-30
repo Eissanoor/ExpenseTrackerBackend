@@ -2,12 +2,19 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 const errorHandler = require('./middlewares/errorMiddleware');
 
 // Load environment variables
-dotenv.config();
+const envPath = path.join(__dirname, '.env');
+dotenv.config({ path: envPath });
+console.log('Env file path:', envPath);
 
-// Create Express app
+
+// Connect to database
+require('./config/db');
+
+// Create Express app 
 const app = express();
 
 // Middleware
@@ -25,12 +32,6 @@ app.get('/', (req, res) => {
 
 // Error handling middleware
 app.use(errorHandler);
-
-// Connect to MongoDB
-const connectDB = require('./config/db');
-
-// Connect to database
-connectDB();
 
 // Start server
 const PORT = process.env.PORT || 5000;

@@ -394,3 +394,122 @@ exports.getMonthlyExpenses = async (req, res) => {
     });
   }
 }; 
+
+// @desc    Get total amount of expenses with filtering
+// @route   GET /api/expenses/total
+// @access  Private
+exports.getTotalAmount = async (req, res) => {
+  try {
+    // Copy req.query
+    const reqQuery = { ...req.query };
+    // Fields to exclude
+    const removeFields = ['select', 'sort', 'page', 'limit'];
+    // Loop over removeFields and delete them from reqQuery
+    removeFields.forEach(param => delete reqQuery[param]);
+
+    // Create query object with user filter
+    let queryObj = { user: req.user.id };
+    
+    // Add other filters from reqQuery (except the ones we excluded)
+    Object.keys(reqQuery).forEach(key => {
+      if (!['startDate', 'endDate', 'week', 'month', 'year', 'amountEquals', 'amountGreaterThan', 'amountLessThan'].includes(key)) {
+        queryObj[key] = reqQuery[key];
+      }
+    });
+
+    // Date filtering
+    if (req.query.startDate && req.query.endDate) {
+      queryObj.date = {
+        $gte: new Date(req.query.startDate),
+        $lte: new Date(req.query.endDate)
+      };
+    } else if (req.query.startDate) {
+      queryObj.date = { $gte: new Date(req.query.startDate) };
+    } else if (req.query.endDate) {
+      queryObj.date = { $lte: new Date(req.query.endDate) };
+    } else if (req.query.week && req.query.year) {
+      // Week filtering (week number and year)
+      const year = parseInt(req.query.year);
+      const week = parseInt(req.query.week);
+      
+      // Calculate the start date of the specified week
+      const startDate = new Date(year, 0, 1 + (week - 1) * 7);
+      // Adjust to the nearest Sunday if not already
+      const dayOfWeek = startDate.getDay();
+      startDate.setDate(startDate.getDate() - dayOfWeek);
+      
+      // Calculate the end date (start date + 6 days)
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      
+      queryObj.date = { $gte: startDate, $lte: endDate };
+    } else if (req.query.month && req.query.year) {
+      // Month filtering (month number and year)
+      const year = parseInt(req.query.year);
+      const month = parseInt(req.query.month) - 1; // JavaScript months are 0-indexed
+      
+      // First day of the specified month
+      const startDate = new Date(year, month, 1);
+      
+      // First day of the next month
+      const endDate = new Date(year, month + 1, 0);
+      
+      queryObj.date = { $gte: startDate, $lte: endDate };
+    }
+
+    // Amount filtering
+    if (req.query.amountEquals) {
+      queryObj.amount = parseFloat(req.query.amountEquals);
+    } else {
+      // Create amount filter object if needed
+      const amountFilter = {};
+      
+      if (req.query.amountGreaterThan) {
+        amountFilter.$gte = parseFloat(req.query.amountGreaterThan);
+      }
+      
+      if (req.query.amountLessThan) {
+        amountFilter.$lte = parseFloat(req.query.amountLessThan);
+      }
+      
+      // Add amount filter to query object if any amount filters were specified
+      if (Object.keys(amountFilter).length > 0) {
+        queryObj.amount = amountFilter;
+      }
+    }
+
+    console.log('Query object for aggregation:', JSON.stringify(queryObj));
+
+    // Calculate total amount using aggregation
+    const result = await Expense.aggregate([
+      { $match: queryObj },
+      { 
+        $group: { 
+          _id: null, 
+          totalAmount: { $sum: "$amount" }, 
+          count: { $sum: 1 } 
+        } 
+      }
+    ]);
+
+    console.log('Aggregation result:', result);
+
+    // Get the total or default to 0 if no expenses found
+    const totalAmount = result.length > 0 ? result[0].totalAmount : 0;
+    const count = result.length > 0 ? result[0].count : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        total: totalAmount,
+        count: count
+      }
+    });
+  } catch (error) {
+    console.error('Error in getTotalAmount:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}; 
