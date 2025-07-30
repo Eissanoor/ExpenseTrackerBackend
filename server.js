@@ -10,9 +10,9 @@ const envPath = path.join(__dirname, '.env');
 dotenv.config({ path: envPath });
 console.log('Env file path:', envPath);
 
-
 // Connect to database
-require('./config/db');
+const db = require('./config/db');
+db.on('error', (error) => console.error('MongoDB connection error:', error));
 
 // Create Express app 
 const app = express();

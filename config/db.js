@@ -5,13 +5,24 @@ mongoose.Promise = global.Promise;
 let MONGODB_URL = process.env.MONGODB_URL;
 
 
+// Log connection attempt
+console.log("Attempting to connect to MongoDB...");
 
-mongoose
-  .connect(MONGODB_URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
+const connectDB = async () => {
+  try {
+    await mongoose.connect(MONGODB_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
+      socketTimeoutMS: 45000, // Increase socket timeout
+    });
     console.log("Database Connected Successfully");
-  })
-  .catch((e) => console.log(e));
+  } catch (error) {
+    console.error("MongoDB connection error:", error.message);
+    process.exit(1); // Exit with failure
+  }
+};
+
+connectDB();
+
+module.exports = mongoose.connection;
