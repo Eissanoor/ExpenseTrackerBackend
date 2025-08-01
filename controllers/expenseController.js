@@ -31,12 +31,17 @@ exports.getExpenses = async (req, res) => {
     // Copy req.query
     const reqQuery = { ...req.query };
     // Fields to exclude
-    const removeFields = ['select', 'sort', 'page', 'limit', 'startDate', 'endDate', 'week', 'month', 'year', 'amountEquals', 'amountGreaterThan', 'amountLessThan'];
+    const removeFields = ['select', 'sort', 'page', 'limit', 'startDate', 'endDate', 'week', 'month', 'year', 'amountEquals', 'amountGreaterThan', 'amountLessThan', 'itemSearch'];
     // Loop over removeFields and delete them from reqQuery
     removeFields.forEach(param => delete reqQuery[param]);
 
     // Create query object with user filter
     let queryObj = { user: req.user.id, ...reqQuery };
+
+    // Item partial search
+    if (req.query.itemSearch) {
+      queryObj.item = { $regex: req.query.itemSearch, $options: 'i' };
+    }
 
     // Date filtering
     if (req.query.startDate && req.query.endDate) {
