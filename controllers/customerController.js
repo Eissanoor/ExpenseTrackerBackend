@@ -222,10 +222,14 @@ exports.getCustomerExpenses = async (req, res) => {
       customer: req.params.id,
       user: req.user.id,
     }).sort('-date');
+    
+    // Calculate total amount of all expenses
+    const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
     res.status(200).json({
       success: true,
       count: expenses.length,
+      totalAmount,
       data: expenses,
     });
   } catch (error) {
