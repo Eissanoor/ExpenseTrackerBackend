@@ -167,7 +167,7 @@ exports.updateCustomer = async (req, res) => {
   }
 };
 
-// @desc    Delete customer
+// @desc    Delete customer and all related expenses
 // @route   DELETE /api/customers/:id
 // @access  Private
 exports.deleteCustomer = async (req, res) => {
@@ -184,11 +184,20 @@ exports.deleteCustomer = async (req, res) => {
       });
     }
 
+    // Delete all expenses related to this customer
+    const Expense = require('../models/expenseModel');
+    const deleteResult = await Expense.deleteMany({
+      customer: req.params.id,
+      user: req.user.id,
+    });
+
+    // Delete the customer
     await customer.deleteOne();
 
     res.status(200).json({
       success: true,
       data: {},
+      message: `Customer deleted along with ${deleteResult.deletedCount} related expenses`,
     });
   } catch (error) {
     res.status(400).json({
