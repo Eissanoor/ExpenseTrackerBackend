@@ -24,6 +24,7 @@ app.use(express.json());
 // Routes
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/expenses', require('./routes/expenseRoutes'));
+app.use('/api/customers', require('./routes/customerRoutes'));
 
 // Default route
 app.get('/', (req, res) => {

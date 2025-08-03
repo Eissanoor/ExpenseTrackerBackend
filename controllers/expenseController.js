@@ -9,6 +9,22 @@ exports.createExpense = async (req, res) => {
     // Add user to request body
     req.body.user = req.user.id;
 
+    // Validate customer if provided
+    if (req.body.customer) {
+      const Customer = require('../models/customerModel');
+      const customer = await Customer.findOne({
+        _id: req.body.customer,
+        user: req.user.id
+      });
+
+      if (!customer) {
+        return res.status(404).json({
+          success: false,
+          message: 'Customer not found',
+        });
+      }
+    }
+
     const expense = await Expense.create(req.body);
 
     res.status(201).json({
@@ -31,7 +47,7 @@ exports.getExpenses = async (req, res) => {
     // Copy req.query
     const reqQuery = { ...req.query };
     // Fields to exclude
-    const removeFields = ['select', 'sort', 'page', 'limit', 'startDate', 'endDate', 'week', 'month', 'year', 'amountEquals', 'amountGreaterThan', 'amountLessThan', 'itemSearch'];
+    const removeFields = ['select', 'sort', 'page', 'limit', 'startDate', 'endDate', 'week', 'month', 'year', 'amountEquals', 'amountGreaterThan', 'amountLessThan', 'itemSearch', 'customerId'];
     // Loop over removeFields and delete them from reqQuery
     removeFields.forEach(param => delete reqQuery[param]);
 
@@ -41,6 +57,11 @@ exports.getExpenses = async (req, res) => {
     // Item partial search
     if (req.query.itemSearch) {
       queryObj.item = { $regex: req.query.itemSearch, $options: 'i' };
+    }
+    
+    // Filter by customer
+    if (req.query.customerId) {
+      queryObj.customer = req.query.customerId;
     }
 
     // Date filtering
@@ -131,7 +152,7 @@ exports.getExpenses = async (req, res) => {
     query = query.skip(startIndex).limit(limit);
 
     // Executing query
-    const expenses = await query;
+    const expenses = await query.populate('customer', 'name');
 
     // Pagination result
     const pagination = {};
@@ -173,7 +194,7 @@ exports.getExpense = async (req, res) => {
     const expense = await Expense.findOne({
       _id: req.params.id,
       user: req.user.id,
-    });
+    }).populate('customer', 'name');
 
     if (!expense) {
       return res.status(404).json({
