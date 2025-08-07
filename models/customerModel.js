@@ -12,11 +12,16 @@ const customerSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+    },
   },
   { timestamps: true }
 );
 
-// Create index for better query performance
+// Create indexes for better query performance
 customerSchema.index({ user: 1 });
+customerSchema.index({ organization: 1 });
 
 module.exports = mongoose.model('Customer', customerSchema);

@@ -5,7 +5,8 @@ const {
   getCustomer,
   updateCustomer,
   deleteCustomer,
-  getCustomerExpenses
+  getCustomerExpenses,
+  getCustomersByOrganization
 } = require('../controllers/customerController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -26,5 +27,8 @@ router.route('/:id')
 
 router.route('/:id/expenses')
   .get(getCustomerExpenses);
+
+router.route('/organization/:organizationId')
+  .get(getCustomersByOrganization);
 
 module.exports = router;
