@@ -430,9 +430,58 @@ exports.getTotalAmount = async (req, res) => {
     // Get the user ID from the request
     const userId = req.user.id;
     
-    // Simple aggregation to sum all expenses for this user
+    // Check if organization ID is provided in query params
+    const organizationId = req.query.organizationId;
+    
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization ID is required'
+      });
+    }
+    
+    // Verify the organization exists and belongs to the requesting user
+    const Organization = require('../models/organizationModel');
+    const organization = await Organization.findOne({
+      _id: organizationId,
+      user: userId
+    });
+    
+    if (!organization) {
+      return res.status(404).json({
+        success: false,
+        message: 'Organization not found or you do not have access to it'
+      });
+    }
+    
+    // Find all customers associated with this organization
+    const Customer = require('../models/customerModel');
+    const customers = await Customer.find({ 
+      organization: organizationId 
+    });
+    
+    // Get customer IDs
+    const customerIds = customers.map(customer => customer._id);
+    
+    // If no customers found, return zero totals
+    if (customerIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          total: 0,
+          count: 0,
+          organizationId
+        }
+      });
+    }
+    
+    // Aggregation to sum all expenses for customers in this organization
     const result = await Expense.aggregate([
-      { $match: { user: new mongoose.Types.ObjectId(userId) } },
+      { 
+        $match: { 
+          customer: { $in: customerIds.map(id => new mongoose.Types.ObjectId(id)) }
+        } 
+      },
       { 
         $group: { 
           _id: null, 
@@ -450,7 +499,8 @@ exports.getTotalAmount = async (req, res) => {
       success: true,
       data: {
         total,
-        count
+        count,
+        organizationId
       }
     });
   } catch (error) {

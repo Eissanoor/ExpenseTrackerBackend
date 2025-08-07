@@ -371,3 +371,60 @@ exports.getCustomersByOrganization = async (req, res) => {
     });
   }
 };
+
+// @desc    Transfer all customers to a specific organization
+// @route   PUT /api/customers/transfer-to-organization/:organizationId
+// @access  Private
+exports.transferCustomersToOrganization = async (req, res) => {
+  try {
+    const organizationId = req.params.organizationId;
+    
+    // Validate organization exists and belongs to user
+    const Organization = require('../models/organizationModel');
+    const organization = await Organization.findOne({
+      _id: organizationId,
+      user: req.user.id,
+    });
+    
+    if (!organization) {
+      return res.status(404).json({
+        success: false,
+        message: 'Organization not found',
+      });
+    }
+    
+    // Find all customers belonging to the user that need to be transferred
+    // We can optionally filter by specific criteria from the request body
+    let queryObj = { user: req.user.id };
+    
+    // If specific customer IDs are provided, only transfer those
+    if (req.body.customerIds && Array.isArray(req.body.customerIds) && req.body.customerIds.length > 0) {
+      queryObj._id = { $in: req.body.customerIds };
+    }
+    
+    // If we want to exclude customers that already have an organization
+    if (req.body.excludeWithOrganization) {
+      queryObj.organization = { $exists: false };
+    }
+    
+    // Update all matching customers to the new organization
+    const result = await Customer.updateMany(
+      queryObj,
+      { $set: { organization: organizationId } }
+    );
+    
+    res.status(200).json({
+      success: true,
+      message: `${result.modifiedCount} customers transferred to organization: ${organization.name}`,
+      modifiedCount: result.modifiedCount,
+      matchedCount: result.matchedCount,
+      organizationId: organizationId,
+      organizationName: organization.name
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
