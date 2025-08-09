@@ -1,6 +1,23 @@
 const Expense = require('../models/expenseModel');
 const mongoose = require('mongoose');
 
+// Helper function to format date to DD-MM-YY
+const formatDateToDDMMYY = (date) => {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = String(d.getFullYear()).slice(-2);
+  return `${day}-${month}-${year}`;
+};
+
+// Helper function to parse DD-MM-YY to Date object
+const parseDDMMYY = (dateString) => {
+  if (!dateString) return null;
+  const [day, month, year] = dateString.split('-');
+  // Note: adding 2000 to year as we're assuming 20xx for two-digit years
+  return new Date(parseInt('20' + year), parseInt(month) - 1, parseInt(day));
+};
+
 // @desc    Create new expense
 // @route   POST /api/expenses
 // @access  Private
@@ -8,6 +25,12 @@ exports.createExpense = async (req, res) => {
   try {
     // Add user to request body
     req.body.user = req.user.id;
+    
+    // Format date if provided, otherwise it will use the default from the model
+    if (req.body.date) {
+      const dateObj = new Date(req.body.date);
+      req.body.date = formatDateToDDMMYY(dateObj);
+    }
 
     // Validate customer if provided
     if (req.body.customer) {
@@ -67,13 +90,13 @@ exports.getExpenses = async (req, res) => {
     // Date filtering
     if (req.query.startDate && req.query.endDate) {
       queryObj.date = {
-        $gte: new Date(req.query.startDate).toISOString(),
-        $lte: new Date(req.query.endDate).toISOString()
+        $gte: formatDateToDDMMYY(new Date(req.query.startDate)),
+        $lte: formatDateToDDMMYY(new Date(req.query.endDate))
       };
     } else if (req.query.startDate) {
-      queryObj.date = { $gte: new Date(req.query.startDate).toISOString() };
+      queryObj.date = { $gte: formatDateToDDMMYY(new Date(req.query.startDate)) };
     } else if (req.query.endDate) {
-      queryObj.date = { $lte: new Date(req.query.endDate).toISOString() };
+      queryObj.date = { $lte: formatDateToDDMMYY(new Date(req.query.endDate)) };
     } else if (req.query.week && req.query.year) {
       // Week filtering (week number and year)
       const year = parseInt(req.query.year);
@@ -89,7 +112,7 @@ exports.getExpenses = async (req, res) => {
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 6);
       
-      queryObj.date = { $gte: startDate.toISOString(), $lte: endDate.toISOString() };
+      queryObj.date = { $gte: formatDateToDDMMYY(startDate), $lte: formatDateToDDMMYY(endDate) };
     } else if (req.query.month && req.query.year) {
       // Month filtering (month number and year)
       const year = parseInt(req.query.year);
@@ -101,7 +124,7 @@ exports.getExpenses = async (req, res) => {
       // First day of the next month
       const endDate = new Date(year, month + 1, 0);
       
-      queryObj.date = { $gte: startDate.toISOString(), $lte: endDate.toISOString() };
+      queryObj.date = { $gte: formatDateToDDMMYY(startDate), $lte: formatDateToDDMMYY(endDate) };
     }
 
     // Amount filtering
@@ -232,6 +255,12 @@ exports.updateExpense = async (req, res) => {
       });
     }
 
+    // Format date if provided
+    if (req.body.date) {
+      const dateObj = new Date(req.body.date);
+      req.body.date = formatDateToDDMMYY(dateObj);
+    }
+    
     expense = await Expense.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -291,13 +320,13 @@ exports.getExpenseSummary = async (req, res) => {
     // Date filtering
     if (req.query.startDate && req.query.endDate) {
       filter.date = {
-        $gte: new Date(req.query.startDate).toISOString(),
-        $lte: new Date(req.query.endDate).toISOString()
+        $gte: formatDateToDDMMYY(new Date(req.query.startDate)),
+        $lte: formatDateToDDMMYY(new Date(req.query.endDate))
       };
     } else if (req.query.startDate) {
-      filter.date = { $gte: new Date(req.query.startDate).toISOString() };
+      filter.date = { $gte: formatDateToDDMMYY(new Date(req.query.startDate)) };
     } else if (req.query.endDate) {
-      filter.date = { $lte: new Date(req.query.endDate).toISOString() };
+      filter.date = { $lte: formatDateToDDMMYY(new Date(req.query.endDate)) };
     }
 
     // Calculate total amount
@@ -335,7 +364,7 @@ exports.getWeeklyExpenses = async (req, res) => {
     // Create filter object
     const filter = {
       user: req.user.id,
-      date: { $gte: startDate.toISOString(), $lte: endDate.toISOString() }
+      date: { $gte: formatDateToDDMMYY(startDate), $lte: formatDateToDDMMYY(endDate) }
     };
 
     // Get daily totals
@@ -343,7 +372,7 @@ exports.getWeeklyExpenses = async (req, res) => {
       { $match: filter },
       {
         $group: {
-          _id: { $substr: ['$date', 0, 10] }, // Extract YYYY-MM-DD from ISO string
+          _id: '$date', // Already in DD-MM-YY format
           total: { $sum: '$amount' }
         }
       },
@@ -385,7 +414,7 @@ exports.getMonthlyExpenses = async (req, res) => {
     // Create filter object
     const filter = {
       user: req.user.id,
-      date: { $gte: startDate.toISOString(), $lte: endDate.toISOString() }
+      date: { $gte: formatDateToDDMMYY(startDate), $lte: formatDateToDDMMYY(endDate) }
     };
 
     // Get daily totals
@@ -393,7 +422,7 @@ exports.getMonthlyExpenses = async (req, res) => {
       { $match: filter },
       {
         $group: {
-          _id: { $substr: ['$date', 0, 10] }, // Extract YYYY-MM-DD from ISO string
+          _id: '$date', // Already in DD-MM-YY format
           total: { $sum: '$amount' }
         }
       },
