@@ -1,21 +1,55 @@
 const Expense = require('../models/expenseModel');
 const mongoose = require('mongoose');
 
+// Helper function to check if string is in DD-MM-YY format
+const isDDMMYYFormat = (dateString) => {
+  if (!dateString || typeof dateString !== 'string') return false;
+  // Check if the string matches the DD-MM-YY pattern
+  const regex = /^(\d{2})-(\d{2})-(\d{2})$/;
+  return regex.test(dateString);
+};
+
 // Helper function to format date to DD-MM-YY
 const formatDateToDDMMYY = (date) => {
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = String(d.getFullYear()).slice(-2);
-  return `${day}-${month}-${year}`;
+  // If already in DD-MM-YY format, return as is
+  if (isDDMMYYFormat(date)) {
+    return date;
+  }
+  
+  try {
+    const d = new Date(date);
+    // Check if date is valid
+    if (isNaN(d.getTime())) {
+      throw new Error('Invalid date');
+    }
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    // Return current date as fallback
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = String(now.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+  }
 };
 
 // Helper function to parse DD-MM-YY to Date object
 const parseDDMMYY = (dateString) => {
   if (!dateString) return null;
-  const [day, month, year] = dateString.split('-');
-  // Note: adding 2000 to year as we're assuming 20xx for two-digit years
-  return new Date(parseInt('20' + year), parseInt(month) - 1, parseInt(day));
+  
+  // Check if already in DD-MM-YY format
+  if (isDDMMYYFormat(dateString)) {
+    const [day, month, year] = dateString.split('-');
+    // Note: adding 2000 to year as we're assuming 20xx for two-digit years
+    return new Date(parseInt('20' + year), parseInt(month) - 1, parseInt(day));
+  }
+  
+  // If not in DD-MM-YY format, try to parse as regular date
+  return new Date(dateString);
 };
 
 // @desc    Create new expense
@@ -28,8 +62,30 @@ exports.createExpense = async (req, res) => {
     
     // Format date if provided, otherwise it will use the default from the model
     if (req.body.date) {
-      const dateObj = new Date(req.body.date);
-      req.body.date = formatDateToDDMMYY(dateObj);
+      // If already in DD-MM-YY format, use it directly
+      if (isDDMMYYFormat(req.body.date)) {
+        // Validate the date format
+        const [day, month, year] = req.body.date.split('-');
+        const dayNum = parseInt(day);
+        const monthNum = parseInt(month);
+        
+        // Basic validation for day and month
+        if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid date format. Please use DD-MM-YY with valid day and month.',
+          });
+        }
+      } else {
+        try {
+          req.body.date = formatDateToDDMMYY(req.body.date);
+        } catch (error) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid date format. Please use DD-MM-YY format.',
+          });
+        }
+      }
     }
 
     // Validate customer if provided
@@ -90,13 +146,13 @@ exports.getExpenses = async (req, res) => {
     // Date filtering
     if (req.query.startDate && req.query.endDate) {
       queryObj.date = {
-        $gte: formatDateToDDMMYY(new Date(req.query.startDate)),
-        $lte: formatDateToDDMMYY(new Date(req.query.endDate))
+        $gte: formatDateToDDMMYY(req.query.startDate),
+        $lte: formatDateToDDMMYY(req.query.endDate)
       };
     } else if (req.query.startDate) {
-      queryObj.date = { $gte: formatDateToDDMMYY(new Date(req.query.startDate)) };
+      queryObj.date = { $gte: formatDateToDDMMYY(req.query.startDate) };
     } else if (req.query.endDate) {
-      queryObj.date = { $lte: formatDateToDDMMYY(new Date(req.query.endDate)) };
+      queryObj.date = { $lte: formatDateToDDMMYY(req.query.endDate) };
     } else if (req.query.week && req.query.year) {
       // Week filtering (week number and year)
       const year = parseInt(req.query.year);
@@ -257,8 +313,30 @@ exports.updateExpense = async (req, res) => {
 
     // Format date if provided
     if (req.body.date) {
-      const dateObj = new Date(req.body.date);
-      req.body.date = formatDateToDDMMYY(dateObj);
+      // If already in DD-MM-YY format, use it directly
+      if (isDDMMYYFormat(req.body.date)) {
+        // Validate the date format
+        const [day, month, year] = req.body.date.split('-');
+        const dayNum = parseInt(day);
+        const monthNum = parseInt(month);
+        
+        // Basic validation for day and month
+        if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid date format. Please use DD-MM-YY with valid day and month.',
+          });
+        }
+      } else {
+        try {
+          req.body.date = formatDateToDDMMYY(req.body.date);
+        } catch (error) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid date format. Please use DD-MM-YY format.',
+          });
+        }
+      }
     }
     
     expense = await Expense.findByIdAndUpdate(req.params.id, req.body, {
@@ -320,13 +398,13 @@ exports.getExpenseSummary = async (req, res) => {
     // Date filtering
     if (req.query.startDate && req.query.endDate) {
       filter.date = {
-        $gte: formatDateToDDMMYY(new Date(req.query.startDate)),
-        $lte: formatDateToDDMMYY(new Date(req.query.endDate))
+        $gte: formatDateToDDMMYY(req.query.startDate),
+        $lte: formatDateToDDMMYY(req.query.endDate)
       };
     } else if (req.query.startDate) {
-      filter.date = { $gte: formatDateToDDMMYY(new Date(req.query.startDate)) };
+      filter.date = { $gte: formatDateToDDMMYY(req.query.startDate) };
     } else if (req.query.endDate) {
-      filter.date = { $lte: formatDateToDDMMYY(new Date(req.query.endDate)) };
+      filter.date = { $lte: formatDateToDDMMYY(req.query.endDate) };
     }
 
     // Calculate total amount
