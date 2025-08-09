@@ -16,8 +16,8 @@ const expenseSchema = new mongoose.Schema(
       required: [true, 'Amount is required'],
     },
     date: {
-      type: Date,
-      default: Date.now,
+      type: String,
+      default: new Date().toISOString(),
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,

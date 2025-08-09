@@ -67,13 +67,13 @@ exports.getExpenses = async (req, res) => {
     // Date filtering
     if (req.query.startDate && req.query.endDate) {
       queryObj.date = {
-        $gte: new Date(req.query.startDate),
-        $lte: new Date(req.query.endDate)
+        $gte: new Date(req.query.startDate).toISOString(),
+        $lte: new Date(req.query.endDate).toISOString()
       };
     } else if (req.query.startDate) {
-      queryObj.date = { $gte: new Date(req.query.startDate) };
+      queryObj.date = { $gte: new Date(req.query.startDate).toISOString() };
     } else if (req.query.endDate) {
-      queryObj.date = { $lte: new Date(req.query.endDate) };
+      queryObj.date = { $lte: new Date(req.query.endDate).toISOString() };
     } else if (req.query.week && req.query.year) {
       // Week filtering (week number and year)
       const year = parseInt(req.query.year);
@@ -89,7 +89,7 @@ exports.getExpenses = async (req, res) => {
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 6);
       
-      queryObj.date = { $gte: startDate, $lte: endDate };
+      queryObj.date = { $gte: startDate.toISOString(), $lte: endDate.toISOString() };
     } else if (req.query.month && req.query.year) {
       // Month filtering (month number and year)
       const year = parseInt(req.query.year);
@@ -101,7 +101,7 @@ exports.getExpenses = async (req, res) => {
       // First day of the next month
       const endDate = new Date(year, month + 1, 0);
       
-      queryObj.date = { $gte: startDate, $lte: endDate };
+      queryObj.date = { $gte: startDate.toISOString(), $lte: endDate.toISOString() };
     }
 
     // Amount filtering
@@ -291,13 +291,13 @@ exports.getExpenseSummary = async (req, res) => {
     // Date filtering
     if (req.query.startDate && req.query.endDate) {
       filter.date = {
-        $gte: new Date(req.query.startDate),
-        $lte: new Date(req.query.endDate)
+        $gte: new Date(req.query.startDate).toISOString(),
+        $lte: new Date(req.query.endDate).toISOString()
       };
     } else if (req.query.startDate) {
-      filter.date = { $gte: new Date(req.query.startDate) };
+      filter.date = { $gte: new Date(req.query.startDate).toISOString() };
     } else if (req.query.endDate) {
-      filter.date = { $lte: new Date(req.query.endDate) };
+      filter.date = { $lte: new Date(req.query.endDate).toISOString() };
     }
 
     // Calculate total amount
@@ -335,7 +335,7 @@ exports.getWeeklyExpenses = async (req, res) => {
     // Create filter object
     const filter = {
       user: req.user.id,
-      date: { $gte: startDate, $lte: endDate }
+      date: { $gte: startDate.toISOString(), $lte: endDate.toISOString() }
     };
 
     // Get daily totals
@@ -343,7 +343,7 @@ exports.getWeeklyExpenses = async (req, res) => {
       { $match: filter },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+          _id: { $substr: ['$date', 0, 10] }, // Extract YYYY-MM-DD from ISO string
           total: { $sum: '$amount' }
         }
       },
@@ -385,7 +385,7 @@ exports.getMonthlyExpenses = async (req, res) => {
     // Create filter object
     const filter = {
       user: req.user.id,
-      date: { $gte: startDate, $lte: endDate }
+      date: { $gte: startDate.toISOString(), $lte: endDate.toISOString() }
     };
 
     // Get daily totals
@@ -393,7 +393,7 @@ exports.getMonthlyExpenses = async (req, res) => {
       { $match: filter },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+          _id: { $substr: ['$date', 0, 10] }, // Extract YYYY-MM-DD from ISO string
           total: { $sum: '$amount' }
         }
       },
