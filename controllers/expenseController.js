@@ -60,31 +60,36 @@ exports.createExpense = async (req, res) => {
     // Add user to request body
     req.body.user = req.user.id;
     
-    // Format date if provided, otherwise it will use the default from the model
-    if (req.body.date) {
-      // If already in DD-MM-YY format, use it directly
-      if (isDDMMYYFormat(req.body.date)) {
-        // Validate the date format
-        const [day, month, year] = req.body.date.split('-');
-        const dayNum = parseInt(day);
-        const monthNum = parseInt(month);
-        
-        // Basic validation for day and month
-        if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid date format. Please use DD-MM-YY with valid day and month.',
-          });
-        }
-      } else {
-        try {
-          req.body.date = formatDateToDDMMYY(req.body.date);
-        } catch (error) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid date format. Please use DD-MM-YY format.',
-          });
-        }
+    // Date is now required, so check if it's provided
+    if (!req.body.date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date is required',
+      });
+    }
+    
+    // Format date
+    if (isDDMMYYFormat(req.body.date)) {
+      // Validate the date format
+      const [day, month, year] = req.body.date.split('-');
+      const dayNum = parseInt(day);
+      const monthNum = parseInt(month);
+      
+      // Basic validation for day and month
+      if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid date format. Please use DD-MM-YY with valid day and month.',
+        });
+      }
+    } else {
+      try {
+        req.body.date = formatDateToDDMMYY(req.body.date);
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid date format. Please use DD-MM-YY format.',
+        });
       }
     }
 
@@ -311,31 +316,36 @@ exports.updateExpense = async (req, res) => {
       });
     }
 
-    // Format date if provided
-    if (req.body.date) {
-      // If already in DD-MM-YY format, use it directly
-      if (isDDMMYYFormat(req.body.date)) {
-        // Validate the date format
-        const [day, month, year] = req.body.date.split('-');
-        const dayNum = parseInt(day);
-        const monthNum = parseInt(month);
-        
-        // Basic validation for day and month
-        if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid date format. Please use DD-MM-YY with valid day and month.',
-          });
-        }
-      } else {
-        try {
-          req.body.date = formatDateToDDMMYY(req.body.date);
-        } catch (error) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid date format. Please use DD-MM-YY format.',
-          });
-        }
+    // Date is required, so check if it's provided when updating
+    if (!req.body.date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date is required',
+      });
+    }
+    
+    // Format date
+    if (isDDMMYYFormat(req.body.date)) {
+      // Validate the date format
+      const [day, month, year] = req.body.date.split('-');
+      const dayNum = parseInt(day);
+      const monthNum = parseInt(month);
+      
+      // Basic validation for day and month
+      if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid date format. Please use DD-MM-YY with valid day and month.',
+        });
+      }
+    } else {
+      try {
+        req.body.date = formatDateToDDMMYY(req.body.date);
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid date format. Please use DD-MM-YY format.',
+        });
       }
     }
     
